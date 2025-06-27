@@ -1,0 +1,189 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>小宝成长基金</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        #history-table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        }
+
+        #history-table th, #history-table td {
+            width: 33.33%;
+            text-align: center;
+            padding: 8px;
+            word-wrap: break-word;
+        }
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background-color: #fff0f6;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+        }
+        .fund-name {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .amount {
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #ffb3c6;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:disabled {
+            background-color: #ddd;
+            cursor: not-allowed;
+        }
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 90%;
+        }
+        th, td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #ccc;
+        }
+        img {
+            margin-top: 15px;
+            width: 100px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="fund-name">🌟 小宝成长基金 🌟</div>
+    <div class="amount" id="current-amount">当前金额：¥...</div>
+    <div class="amount" id="today-change">今日涨幅：尚未生成</div>
+    <button id="generate-btn" onclick="generateToday()">开始今天的涨幅</button>
+
+    <table id="history-table">
+        <thead>
+            <tr><th>日期</th><th>涨幅</th><th>金额</th></tr>
+        </thead>
+        <tbody id="history-body">
+        </tbody>
+    </table>
+
+    <div style="max-width: 600px; margin: auto;"><canvas id="trendChart" style="height:200px; max-height:200px;"></canvas></div>
+
+    <img src="avatar.jpg"/>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const initialAmount = 100;
+        const today = new Date().toISOString().split('T')[0];
+        const historyKey = "fund_history";
+
+        function hasTodayEntry(history) {
+            return history.some(entry => entry.date === today);
+        }
+
+        function generateRandomChange() {
+            const r = Math.random();
+            let change;
+            if (r < 0.6) {
+                change = (Math.random() * -10).toFixed(2);
+            } else {
+                change = (Math.random() * 10).toFixed(2);
+            }
+            return parseFloat(change);
+        }
+
+        function generateToday() {
+            let history = JSON.parse(localStorage.getItem(historyKey)) || [];
+            if (hasTodayEntry(history)) {
+                alert("今天已经生成过了哦！");
+                return;
+            }
+
+            const change = generateRandomChange();
+            history.push({ date: today, change });
+            localStorage.setItem(historyKey, JSON.stringify(history));
+            document.getElementById("today-change").innerText = "今日涨幅：" + change.toFixed(2) + "%";
+            document.getElementById("generate-btn").disabled = true;
+            loadHistoryWithChart();
+        }
+
+        function updateChart(history) {
+            const labels = history.map(entry => {
+                const date = new Date(entry.date);
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const dd = String(date.getDate()).padStart(2, '0');
+                return mm + dd;
+            });
+            let amounts = [];
+            let total = initialAmount;
+            history.forEach(entry => {
+                total *= (1 + entry.change / 100);
+                amounts.push(total.toFixed(2));
+            });
+
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '基金总金额',
+                        data: amounts,
+                        fill: false,
+                        tension: 0.3,
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        pointBackgroundColor: 'rgba(255, 99, 132, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function loadHistoryWithChart() {
+            const history = JSON.parse(localStorage.getItem(historyKey)) || [];
+            let currentAmount = initialAmount;
+            const tbody = document.getElementById("history-body");
+            tbody.innerHTML = "";
+
+            history.forEach(entry => {
+                const row = document.createElement("tr");
+                const changeRate = entry.change;
+                currentAmount *= (1 + changeRate / 100);
+                row.innerHTML = `<td>${entry.date}</td><td>${changeRate.toFixed(2)}%</td><td>¥${currentAmount.toFixed(2)}</td>`;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById("current-amount").innerText = "当前金额：¥" + currentAmount.toFixed(2);
+            updateChart(history);
+        }
+
+        function init() {
+            const history = JSON.parse(localStorage.getItem(historyKey)) || [];
+            if (hasTodayEntry(history)) {
+                document.getElementById("generate-btn").disabled = true;
+                const todayEntry = history.find(entry => entry.date === today);
+                document.getElementById("today-change").innerText = "今日涨幅：" + todayEntry.change.toFixed(2) + "%";
+            }
+            loadHistoryWithChart();
+        }
+
+        init();
+    </script>
+</body>
+</html>

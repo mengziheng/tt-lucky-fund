@@ -83,7 +83,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const initialAmount = 100;
-        const today = "2025-06-30";
+        const today = new Date().toISOString().split('T')[0];
         const historyKey = "fund_history";
 
         function hasTodayEntry(history) {
